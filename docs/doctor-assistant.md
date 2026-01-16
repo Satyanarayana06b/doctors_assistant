@@ -91,6 +91,7 @@ LLM -> Bot : appointment confirmed message
 CO -> SS : expire / close session
 
 @enduml
+```
 
 Sequence Diagram ![Image](doctor_appointment.png)
 
