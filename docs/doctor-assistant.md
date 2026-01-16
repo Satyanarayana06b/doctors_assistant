@@ -12,6 +12,7 @@ This system is a chatbot-only application that
 
 Sequence Diagaram
 
+```plantuml
 @startuml
 title Doctor’s Assistant – Chatbot Only (End-to-End)
 
