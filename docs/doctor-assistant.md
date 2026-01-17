@@ -21,7 +21,6 @@ participant "Chatbot Runtime" as Bot
 participant "Conversation Orchestrator" as CO
 participant "Session Store\n(Redis)" as SS
 participant "LLM\n(Completion + Function Calling)" as LLM
-participant "Vector DB\n(Symptom → Specialty)" as VDB
 database "PostgreSQL" as DB
 
 == Conversation Start ==
@@ -30,65 +29,71 @@ Bot -> CO : message + session_id
 CO -> SS : load session
 SS --> CO : session context
 
-== Intent Understanding ==
+== Symptom Understanding ==
 CO -> LLM : prompt + session context
-LLM --> CO : function_call(find_specialty)
+LLM --> CO : inferred specialty (free-text)
 
-== Symptom to Specialty ==
-CO -> VDB : semantic_search(symptoms)
-VDB --> CO : specialty (e.g. Orthopedics)
-CO -> SS : update session (specialty)
+CO -> DB : validate / normalize specialty
+DB --> CO : specialty supported? (yes/no)
 
-== Doctor Discovery ==
-CO -> DB : fetch doctors by specialty
-DB --> CO : doctor list
-CO -> LLM : doctor list
-LLM -> Bot : ask user to select doctor
+alt Specialty Supported
+    CO -> SS : update session (specialty)
 
-== Doctor Selection ==
-User -> Bot : selects doctor & date
-Bot -> CO
-CO -> LLM : user response
-LLM --> CO : function_call(check_availability)
+    == Doctor Discovery ==
+    CO -> DB : fetch doctors by specialty
+    DB --> CO : doctor list
+    CO -> LLM : doctor list
+    LLM -> Bot : ask user to select doctor
 
-== Availability Check ==
-CO -> DB : check doctor schedule
-DB --> CO : availability result
+    == Doctor Selection ==
+    User -> Bot : selects doctor & date
+    Bot -> CO
+    CO -> LLM : user response
+    LLM --> CO : function_call(check_availability)
 
-alt Slot Available
-    CO -> LLM : availability success
-    LLM -> Bot : ask confirmation
-else Slot Not Available
-    CO -> LLM : suggest alternate slot
-    LLM -> Bot : alternate time suggestion
+    == Availability Check ==
+    CO -> DB : check doctor schedule
+    DB --> CO : availability result
+
+    alt Slot Available
+        CO -> LLM : availability success
+        LLM -> Bot : ask confirmation
+    else Slot Not Available
+        CO -> LLM : suggest alternate slot
+        LLM -> Bot : alternate time suggestion
+    end
+
+    == Slot Confirmation ==
+    User -> Bot : confirms slot
+    Bot -> CO
+    CO -> SS : update state = SLOT_CONFIRMED
+
+    == Collect Patient Details ==
+    CO -> LLM : request patient details
+    LLM -> Bot : ask name & contact
+    User -> Bot : provides patient details
+    Bot -> CO
+    CO -> SS : store patient details (temporary)
+
+    == Booking Appointment ==
+    CO -> LLM : confirmation
+    LLM --> CO : function_call(book_appointment)
+
+    CO -> DB : BEGIN TRANSACTION
+    DB -> DB : insert patient (if new)
+    DB -> DB : insert appointment
+    DB -> DB : update schedule (is_available=false)
+    CO -> DB : COMMIT
+
+    == Confirmation ==
+    CO -> LLM : booking success
+    LLM -> Bot : appointment confirmed message
+    CO -> SS : expire / close session
+
+else Specialty Not Supported
+    CO -> LLM : generate clarification response
+    LLM -> Bot : "Sorry, we do not have a Neurology specialist at our clinic. Are you looking for any specialist?"
 end
-
-== Slot Confirmation ==
-User -> Bot : confirms slot
-Bot -> CO
-CO -> SS : update state = SLOT_CONFIRMED
-
-== Collect Patient Details ==
-CO -> LLM : request patient details
-LLM -> Bot : ask name & contact
-User -> Bot : provides patient details
-Bot -> CO
-CO -> SS : store patient details (temporary)
-
-== Booking Appointment ==
-CO -> LLM : confirmation
-LLM --> CO : function_call(book_appointment)
-
-CO -> DB : BEGIN TRANSACTION
-DB -> DB : insert patient (if new)
-DB -> DB : insert appointment
-DB -> DB : update schedule (is_available=false)
-CO -> DB : COMMIT
-
-== Confirmation ==
-CO -> LLM : booking success
-LLM -> Bot : appointment confirmed message
-CO -> SS : expire / close session
 
 @enduml
 ```
