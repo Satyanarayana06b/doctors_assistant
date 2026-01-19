@@ -1,5 +1,7 @@
 from state import ConversationState
-from session_store import load_session, save_session
+from session_store import load_session, save_session, clear_session
+from llm_client import call_llm
+from prompts import SYSTEM_PROMPT
 
 class ConversationOrchestrator:
 
@@ -37,7 +39,14 @@ class ConversationOrchestrator:
     
     def handle_collecting_symptoms(self, session_id: str, session: dict, user_input: str) -> str:
         session['symptoms'] = user_input
-        session['speciality'] = "Orthopedics"  # Placeholder for speciality inference logic
+        # session['speciality'] = "Orthopedics"  # Placeholder for speciality inference logic
+        messages = [
+            {"role":"system", "content":SYSTEM_PROMPT},
+            {"role":"user", "content": user_input}
+            ]
+        response = call_llm(messages)
+        speciality =  response.choices[0].message.content.strip()
+        session['speciality'] = speciality
         session['state'] = ConversationState.SELECTING_DOCTOR.value
         save_session(session_id, session)
         return "Thank you. Which doctor would you like to meet? (Dr X /Dr Y)"
@@ -69,22 +78,16 @@ class ConversationOrchestrator:
         else:
             session['patient_name'] = user_input
         
-        session['state'] = ConversationState.BOOKED.value
-        save_session(session_id, session)
-        
-        # Create booking confirmation message
+        # Get booking details for confirmation message
         doctor = session.get('doctor', 'the doctor')
         speciality = session.get('speciality', '')
-        return f"Perfect! Your appointment with {doctor} ({speciality}) is confirmed for tomorrow at 11 AM. You'll receive a confirmation shortly. Thank you!"
-
-    def handle_booking_complete(self, session_id: str, session: dict, user_input: str) -> str:
-        if user_input.lower() in ["yes", "y"]:
-            session.clear()
-            session["state"] = ConversationState.INIT.value
-            save_session(session_id, session)
-            return "Sure. Please describe your health issue."
-        else:
-            return "Thank you for contacting Super Clinic. Have a good day!"
+        
+        # Clear the current session completely
+        clear_session(session_id)
+        
+        return f"Perfect! Your appointment with {doctor} ({speciality}) is confirmed for tomorrow at 11 AM. You'll receive a confirmation shortly. Thank you for choosing Super Clinic!\n\nYour session has been closed. Start a new conversation to book another appointment."
+    
+    
     
     
     
