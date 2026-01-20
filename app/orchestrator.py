@@ -42,20 +42,26 @@ class ConversationOrchestrator:
     
     def handle_collecting_symptoms(self, session_id: str, session: dict, user_input: str) -> str:
         session['symptoms'] = user_input
-        # session['speciality'] = "Orthopedics"  # Placeholder for speciality inference logic
+        # Use specialized prompt to infer medical specialty
         messages = [
             {"role":"system", "content":SPECIALITY_INFERENCE_PROMPT},
             {"role":"user", "content": user_input}
             ]
         response = call_llm(messages)
         speciality = response.choices[0].message.content.strip()
+        
+        # Validate specialty - should be reasonable length and contain only letters/spaces
+        if not speciality or len(speciality) > 50 or not all(c.isalpha() or c.isspace() for c in speciality):
+            print(f" Invalid LLM output: '{speciality}', defaulting to General Medicine")
+            speciality = "General Medicine"
+        
         print(f"======Inferred speciality: {speciality}")
         session['speciality'] = speciality
         
         # Get doctors by specialty from database
         doctors = get_doctors_by_speciality(speciality)
         if not doctors:
-            return f"Sorry, we don't have any {speciality} specialists available at the moment."
+            return f"Sorry, we don't have any {speciality} specialists available at the moment. Please describe your symptoms differently."
         
         # Format doctor names for display
         doctor_names = " / ".join([doc[1] for doc in doctors])

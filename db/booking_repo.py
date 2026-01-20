@@ -29,6 +29,9 @@ def book_appointment(doctor_id, patient_name, phone, date, time):
 
         conn.commit()
         return True
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return False
 
     except Exception as e:
         conn.rollback()

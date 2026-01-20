@@ -32,9 +32,9 @@ class RedisSessionStore:
             )
             # Test connection
             self.client.ping()
-            print("✓ Connected to Redis for session storage")
+            print(" Connected to Redis for session storage")
         except redis.ConnectionError as e:
-            print(f"✗ Redis connection failed: {e}")
+            print(f" Redis connection failed: {e}")
             self.client = None
             raise
     

@@ -8,7 +8,10 @@ print("Bot: Hello and welcome to the Super Clinic")
 
 while True:
     user_input = input("User: ")
-    if user_input.lower() in ["exit", "quit"]:
+    if len(user_input.strip()) > 500:
+        response = "Could you please describe briefly."
+    elif user_input.lower() in ["exit", "quit"]:
         break
-    response = bot.handle(session_id, user_input)
+    else:
+        response = bot.handle(session_id, user_input)
     print("Bot:", response)

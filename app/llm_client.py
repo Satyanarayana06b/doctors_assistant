@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from openai import OpenAI
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,5 +20,12 @@ def call_llm(messages, functions=None):
     if functions:
         params["functions"] = functions
     
-    response = client.chat.completions.create(**params)
-    return response
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            response = client.chat.completions.create(**params)
+            return response
+        except Exception as e:
+            if attempt == max_retries - 1:
+                raise
+            time.sleep(1)

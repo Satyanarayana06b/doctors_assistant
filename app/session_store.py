@@ -28,7 +28,13 @@ else:
 # Public API
 def load_session(session_id: str) -> dict:
     """Load session data"""
-    return _store.load_session(session_id)
+    # return _store.load_session(session_id)
+    try:
+        session = _store.load_session(session_id)
+    except Exception: 
+        session = {"state": "INIT"}
+    return session
+
 
 
 def save_session(session_id: str, data: dict):
