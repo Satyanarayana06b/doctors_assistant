@@ -1,5 +1,5 @@
 import time
-from session_model import SessionData
+from app.session_model import SessionData
 
 _sessions = {}
 
