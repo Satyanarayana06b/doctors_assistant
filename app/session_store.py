@@ -1,26 +1,52 @@
-import time
-from app.session_model import SessionData
+import os
+from dotenv import load_dotenv
 
-_sessions = {}
+load_dotenv()
 
-SESSION_TTL = 1800 #30 minutes
+# Determine which session store to use
+USE_REDIS = os.getenv("USE_REDIS", "false").lower() == "true"
 
+# Initialize the appropriate session store
+_store = None
+
+if USE_REDIS:
+    try:
+        from app.session_store_redis import RedisSessionStore
+        _store = RedisSessionStore()
+        print("Using Redis session store")
+    except Exception as e:
+        print(f"Failed to initialize Redis: {e}")
+        print("Falling back to in-memory session store")
+        from app.session_store_memory import InMemorySessionStore
+        _store = InMemorySessionStore()
+else:
+    from app.session_store_memory import InMemorySessionStore
+    _store = InMemorySessionStore()
+    print("Using in-memory session store")
+
+
+# Public API
 def load_session(session_id: str) -> dict:
-    record = _sessions.get(session_id)
-    if not record:
-        print("No session found, initializing new session.")
-        return SessionData(state="INIT").dict()
-    if time.time() - record["timestamp"] > SESSION_TTL:
-        _sessions.pop(session_id)
-        return SessionData().dict()
-    return record["data"]
+    """Load session data"""
+    return _store.load_session(session_id)
+
 
 def save_session(session_id: str, data: dict):
-    _sessions[session_id] = {
-        "data": data,
-        "timestamp": time.time()
-    }
+    """Save session data"""
+    _store.save_session(session_id, data)
+
 
 def clear_session(session_id: str):
-    _sessions.pop(session_id, None)
+    """Clear a specific session"""
+    _store.clear_session(session_id)
+
+
+def get_all_sessions():
+    """Get all session IDs (for debugging)"""
+    return _store.get_all_sessions()
+
+
+def clear_all_sessions():
+    """Clear all sessions (for testing)"""
+    _store.clear_all_sessions()
 
