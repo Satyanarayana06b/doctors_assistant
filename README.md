@@ -38,6 +38,7 @@ doctors_assistant/
 - PostgreSQL 13+
 - Redis (optional, for production)
 - OpenAI API key
+- Docker (for Redis)
 
 ## Installation
 
@@ -95,6 +96,19 @@ doctors_assistant/
    psql -U postgres -f db/schema.sql
    psql -U postgres -f db/seed.sql
    ```
+
+6. **Set up Redis**
+
+   This project uses **Redis for session management**.
+   Redis is started using Docker with following command:
+   ```bash
+   docker run -p 6379:6379 redis
+   ```
+   This will a Redis container and exposes it on:
+   ```
+   localhost:6379
+   ```
+   
 
 ## Usage
 
